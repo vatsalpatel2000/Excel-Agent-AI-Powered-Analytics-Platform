@@ -1,0 +1,89 @@
+# Excel Agent - Docker Compose Configuration
+# Local development environment
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: excelagent_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: excelagent
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: excelagent_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  # Backend API (optional - for containerized development)
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: excelagent_backend
+  #   environment:
+  #     - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/excelagent
+  #     - REDIS_URL=redis://redis:6379/0
+  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./backend:/app
+  #     - ./backend/uploads:/app/uploads
+  #     - ./backend/outputs:/app/outputs
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Background Worker (optional)
+  # worker:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: excelagent_worker
+  #   environment:
+  #     - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/excelagent
+  #     - REDIS_URL=redis://redis:6379/0
+  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
+  #   volumes:
+  #     - ./backend:/app
+  #     - ./backend/uploads:/app/uploads
+  #     - ./backend/outputs:/app/outputs
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   command: python -m app.workers.worker
+
+volumes:
+  postgres_data:
+  redis_data:
+
+
+networks:
+  default:
+    name: excelagent_network
